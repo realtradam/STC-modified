@@ -83,6 +83,10 @@ STC_API bool        cstr_getdelim(cstr *self, int delim, FILE *fp);
 STC_API void        cstr_erase(cstr* self, intptr_t pos, intptr_t len);
 STC_API void        cstr_u8_erase(cstr* self, intptr_t bytepos, intptr_t u8len);
 STC_API cstr        cstr_from_fmt(const char* fmt, ...);
+// --
+// added by Tradam:
+STC_API cstr        cstr_from_vfmt(const char* fmt, va_list args);
+// --
 STC_API intptr_t    cstr_append_fmt(cstr* self, const char* fmt, ...);
 STC_API intptr_t    cstr_printf(cstr* self, const char* fmt, ...);
 STC_API cstr        cstr_replace_sv(csview sv, csview search, csview repl, int32_t count);
@@ -630,6 +634,16 @@ STC_DEF cstr cstr_from_fmt(const char* fmt, ...) {
     va_start(args, fmt);
     cstr_vfmt(&s, 0, fmt, args);
     va_end(args);
+    return s;
+}
+
+STC_API cstr cstr_from_vfmt(const char* fmt, va_list args)
+{
+    cstr s = cstr_NULL;
+    //va_list args;
+    //va_start(args, fmt);
+    cstr_vfmt(&s, 0, fmt, args);
+    //va_end(args);
     return s;
 }
 
