@@ -59,20 +59,20 @@ int main(void) {
 
 enum {
     cco_state_final = -1,
-    cco_state_expired = -2,
+    cco_state_done = -2,
 };
 
-#define cco_alive(ctx) ((ctx)->cco_state > 0)
+#define cco_suspended(ctx) ((ctx)->cco_state > 0)
+#define cco_alive(ctx) ((ctx)->cco_state != cco_state_done)
 
 #define cco_begin(ctx) \
     int *_state = &(ctx)->cco_state; \
     switch (*_state) { \
-        case cco_state_expired: \
         case 0:
 
 #define cco_end(retval) \
-        *_state = cco_state_expired; break; \
-        default: goto _cco_final_; /* avoid unused-warning */ \
+        *_state = cco_state_done; break; \
+        case -99: goto _cco_final_; \
     } \
     return retval
 
@@ -83,13 +83,16 @@ enum {
         case __LINE__:; \
     } while (0)
 
-#define cco_yield_3(corocall, ctx, retval) \
+#define cco_yield_2(corocall2, ctx2) \
+    cco_yield_3(corocall2, ctx2, )
+
+#define cco_yield_3(corocall2, ctx2, retval) \
     do { \
         *_state = __LINE__; \
         do { \
-            corocall; if (cco_alive(ctx)) return retval; \
+            corocall2; if (cco_suspended(ctx2)) return retval; \
             case __LINE__:; \
-        } while ((ctx)->cco_state >= cco_state_final); \
+        } while (cco_alive(ctx2)); \
     } while (0)
 
 #define cco_final \
@@ -103,6 +106,12 @@ enum {
     do { \
         int* _state = &(ctx)->cco_state; \
         if (*_state > 0) *_state = cco_state_final; \
+    } while (0)
+
+#define cco_reset(ctx) \
+    do { \
+        int* _state = &(ctx)->cco_state; \
+        if (*_state == cco_state_done) *_state = 0; \
     } while (0)
 
 #endif

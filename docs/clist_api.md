@@ -80,8 +80,8 @@ const i_val*        clist_X_get(const clist_X* self, i_valraw raw);
 i_val*              clist_X_get_mut(clist_X* self, i_valraw raw);
 
 void                clist_X_reverse(clist_X* self);
-void                clist_X_sort(clist_X* self);                                        // needs i_extern defined
-void                clist_X_sort_with(clist_X* self, int(*cmp)(const clist_X_node*, const clist_X_node*));
+void                clist_X_sort(clist_X* self);
+void                clist_X_sort_with(clist_X* self, int(*cmp)(const clist_X_value*, const clist_X_value*));
 
 // Node API
 clist_X_node*       clist_X_get_node(clist_X_value* val);                               // get the enclosing node
@@ -193,21 +193,20 @@ Splice `[30, 40]` from *L2* into *L1* before `3`:
 #include <stdio.h>
 
 int main() {
-    c_auto (clist_i, L1, L2)
-    {
-        L1 = c_make(clist_i, {1, 2, 3, 4, 5});
-        L2 = c_make(clist_i, {10, 20, 30, 40, 50});
+    clist_i L1 = c_make(clist_i, {1, 2, 3, 4, 5});
+    clist_i L2 = c_make(clist_i, {10, 20, 30, 40, 50});
 
-        clist_i_iter i = clist_i_advance(clist_i_begin(&L1), 2);
-        clist_i_iter j1 = clist_i_advance(clist_i_begin(&L2), 2), j2 = clist_i_advance(j1, 2);
+    clist_i_iter i = clist_i_advance(clist_i_begin(&L1), 2);
+    clist_i_iter j1 = clist_i_advance(clist_i_begin(&L2), 2), j2 = clist_i_advance(j1, 2);
 
-        clist_i_splice_range(&L1, i, &L2, j1, j2);
+    clist_i_splice_range(&L1, i, &L2, j1, j2);
 
-        c_foreach (i, clist_i, L1)
-            printf(" %d", *i.ref); puts("");
-        c_foreach (i, clist_i, L2)
-            printf(" %d", *i.ref); puts("");
-    }
+    c_foreach (i, clist_i, L1)
+        printf(" %d", *i.ref); puts("");
+    c_foreach (i, clist_i, L2)
+        printf(" %d", *i.ref); puts("");
+
+    c_drop(clist_i, &L1, &L2);
 }
 ```
 Output:

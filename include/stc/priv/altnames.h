@@ -23,7 +23,6 @@
 #define c_FORLIST c_forlist
 #define c_FORRANGE c_forrange
 #define c_FOREACH c_foreach
-#define c_FORWHILE c_forwhile
 #define c_FORPAIR c_forpair
 #define c_FORFILTER c_forfilter
 #define c_FORMATCH c_formatch
@@ -33,6 +32,3 @@
 #define c_WITH c_with
 #define c_SCOPE c_scope
 #define c_DEFER c_defer
-#define c_NEW c_new
-#define c_ARRAYLEN c_arraylen
-#define c_ARGSV c_SV // [deprecated]

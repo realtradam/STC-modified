@@ -9,7 +9,7 @@
 #include <stc/algo/csort.h>
 
 #define ROTL(d,bits) ((d<<(bits)) | (d>>(8*sizeof(d)-(bits))))
-uint64_t random(uint64_t s[3]) {
+uint64_t romutrio(uint64_t s[3]) {
     uint64_t xp = s[0], yp = s[1], zp = s[2];
     s[0] = 15241094284759029579u * zp;
     s[1] = yp - xp; s[1] = ROTL(s[1], 12);
@@ -17,12 +17,18 @@ uint64_t random(uint64_t s[3]) {
     return xp;
 }
 
+static int cmp_int(const void* a, const void* b) {
+    return c_default_cmp((const int*)a, (const int*)b);
+}
+
 void testsort(int *a, int size, const char *desc) {
     clock_t t = clock();
 #ifdef __cplusplus
-        { printf("std::sort: "); std::sort(a, a + size); }
+    printf("std::sort: "); std::sort(a, a + size);
+#elif defined QSORT
+    printf("qsort: "); qsort(a, size, sizeof *a, cmp_int);
 #else
-        { printf("stc_sort: "); csort_int(a, size); }
+    printf("stc_sort: "); csort_int(a, size);
 #endif
     t = clock() - t;
 
@@ -39,7 +45,7 @@ int main(int argc, char *argv[]) {
     if (!a) return -1;
 
     for (i = 0; i < size; i++)
-        a[i] = random(s) & (1U << 30) - 1;
+        a[i] = romutrio(s) & (1U << 30) - 1;
     testsort(a, size, "random");
     for (i = 0; i < 20; i++)
         printf(" %d", (int)a[i]);

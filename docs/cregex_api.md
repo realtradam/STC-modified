@@ -11,15 +11,17 @@ The API is simple and includes powerful string pattern matches and replace funct
 
 ```c
 enum {
-    /* compile-flags */
-    CREG_C_DOTALL = 1<<0,    /* dot matches newline too: can be set/overridden by (?s) and (?-s) in RE */
-    CREG_C_ICASE = 1<<1,     /* ignore case mode: can be set/overridden by (?i) and (?-i) in RE */
-    /* match-flags */
-    CREG_M_FULLMATCH = 1<<2, /* like start-, end-of-line anchors were in pattern: "^ ... $" */
-    CREG_M_NEXT = 1<<3,      /* use end of previous match[0] as start of input */
-    CREG_M_STARTEND = 1<<4,  /* use match[0] as start+end of input */
-    /* replace-flags */
-    CREG_R_STRIP = 1<<5,     /* only keep the replaced matches, strip the rest */
+    // compile-flags
+    CREG_C_DOTALL = 1<<0,    // dot matches newline too: can be set/overridden by (?s) and (?-s) in RE
+    CREG_C_ICASE = 1<<1,     // ignore case mode: can be set/overridden by (?i) and (?-i) in RE
+
+    // match-flags
+    CREG_M_FULLMATCH = 1<<2, // like start-, end-of-line anchors were in pattern: "^ ... $"
+    CREG_M_NEXT = 1<<3,      // use end of previous match[0] as start of input
+    CREG_M_STARTEND = 1<<4,  // use match[0] as start+end of input
+
+    // replace-flags
+    CREG_R_STRIP = 1<<5,     // only keep the replaced matches, strip the rest
 };
 
 cregex      cregex_init(void);
@@ -80,11 +82,11 @@ void        cregex_drop(cregex* self);
 ### Compiling a regular expression
 ```c
 cregex re1 = cregex_init();
-int result = cregex_compile(&re1, "[0-9]+", CREG_DEFAULT);
+int result = cregex_compile(&re1, "[0-9]+");
 if (result < 0) return result;
 
 const char* url = "(https?://|ftp://|www\\.)([0-9A-Za-z@:%_+~#=-]+\\.)+([a-z][a-z][a-z]?)(/[/0-9A-Za-z\\.@:%_+~#=\\?&-]*)?";
-cregex re2 = cregex_from(url, CREG_DEFAULT);
+cregex re2 = cregex_from(url);
 if (re2.error != CREG_OK)
     return re2.error;
 ...
@@ -94,27 +96,28 @@ cregex_drop(&re1);
 If an error occurs ```cregex_compile``` returns a negative error code stored in re2.error.
 
 ### Getting the first match and making text replacements
+
+[ [Run this code](https://godbolt.org/z/z434TMKfo) ]
 ```c
-#define i_extern // include external utf8 and cregex functions implementation.
+#define i_extern // include external cstr, utf8, cregex functions implementation.
 #include <stc/cregex.h>
-#include <stc/cstr.h>
 
 int main() {
-    const char* input = "start date is 2023-03-01, and end date is 2025-12-31.";
+    const char* input = "start date is 2023-03-01, end date 2025-12-31.";
     const char* pattern = "\\b(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)\\b";
 
-    cregex re = cregex_from(pattern, CREG_DEFAULT);
+    cregex re = cregex_from(pattern);
 
     // Lets find the first date in the string:
     csview match[4]; // full-match, year, month, date.
-    if (cregex_find(&re, input, match, CREG_DEFAULT) == CREG_OK)
+    if (cregex_find(&re, input, match) == CREG_OK)
         printf("Found date: %.*s\n", c_SV(match[0]));
     else
         printf("Could not find any date\n");
 
     // Lets change all dates into US date format MM/DD/YYYY:
     cstr us_input = cregex_replace(&re, input, "$2/$3/$1");
-    printf("US input: %s\n", cstr_str(&us_input));
+    printf("%s\n", cstr_str(&us_input));
 
     // Free allocated data
     cstr_drop(&us_input);
@@ -123,11 +126,11 @@ int main() {
 ```
 For a single match you may use the all-in-one function:
 ```c
-if (cregex_find_pattern(pattern, input, match, CREG_DEFAULT))
+if (cregex_find_pattern(pattern, input, match))
     printf("Found date: %.*s\n", c_SV(match[0]));
 ```
 
-To compile, use: `gcc first_match.c src/cregex.c src/utf8code.c`.
+To use: `gcc first_match.c src/cregex.c src/utf8code.c`.
 In order to use a callback function in the replace call, see `examples/regex_replace.c`.
 
 ### Iterate through regex matches, *c_formatch*
@@ -139,7 +142,7 @@ while (cregex_find(&re, input, match, CREG_M_NEXT) == CREG_OK)
     c_forrange (k, cregex_captures(&re))
         printf("submatch %lld: %.*s\n", k, c_SV(match[k]));
 ```
-There is also a safe macro which simplifies this:
+There is also a for-loop macro to simplify it:
 ```c
 c_formatch (it, &re, input)
     c_forrange (k, cregex_captures(&re))
