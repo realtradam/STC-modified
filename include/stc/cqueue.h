@@ -20,46 +20,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-// STC queue
-/*
-#include <stc/crand.h>
-#include <stdio.h>
+#include "priv/linkage.h"
 
-#define i_key int
-#include <stc/cqueue.h>
-
-int main() {
-    int n = 10000000;
-    crand_t rng = crand_init(1234);
-    crand_unif_t dist = crand_unif_init(0, n);
-
-    c_auto (cqueue_int, Q)
-    {
-        // Push ten million random numbers onto the queue.
-        for (int i=0; i<n; ++i)
-            cqueue_int_push(&Q, crand_unif(&rng, &dist));
-
-        // Push or pop on the queue ten million times
-        printf("before: size, capacity: %d, %d\n", n, cqueue_int_size(&Q), cqueue_int_capacity(&Q));
-        for (int i=n; i>0; --i) {
-            int r = crand_unif(&rng, &dist);
-            if (r & 1)
-                ++n, cqueue_int_push(&Q, r);
-            else
-                --n, cqueue_int_pop(&Q);
-        }
-        printf("after: size, capacity: %d, %d\n", n, cqueue_int_size(&Q), cqueue_int_capacity(&Q));
-    }
-}
-*/
+#ifndef CQUEUE_H_INCLUDED
+#include "ccommon.h"
+#include "forward.h"
+#include <stdlib.h>
+#include <string.h>
+#endif // CQUEUE_H_INCLUDED
 
 #ifndef _i_prefix
 #define _i_prefix cqueue_
 #endif
-#define _i_queue
-#define _pop_front _pop
+#include "priv/cqueue_hdr.h"
 
-#include "cdeq.h"
-
-#undef _pop_front
-#undef _i_queue
+/* -------------------------- IMPLEMENTATION ------------------------- */
+#if defined(i_implement) || defined(i_static)
+#include "priv/cqueue_imp.h"
+#endif // IMPLEMENTATION
+#define CQUEUE_H_INCLUDED
+#include "priv/template2.h"

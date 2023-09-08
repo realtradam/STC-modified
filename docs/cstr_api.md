@@ -1,11 +1,17 @@
 # STC [cstr](../include/stc/cstr.h): String
 ![String](pics/string.jpg)
 
-A **cstr** object represent sequences of characters. It supports an interface similar to that of a standard container of bytes, but adding features specifically designed to operate with strings of single-byte characters, terminated by the null character.
+A **cstr** object represent sequences of characters. It supports an interface similar
+to that of a standard container of bytes, but adding features specifically designed to
+operate with strings of single-byte characters, terminated by the null character.
 
-**cstr** has basic support for *UTF8* encoded strings, and has a set of compact and efficient functions for handling case-foldings and comparisons of UTF strings.
+**cstr** has basic support for *UTF8* encoded strings, and has a set of compact and
+efficient functions for handling case-conversion, iteration and indexing into UTF8
+codepoints.
 
-**cstr** uses short strings optimization (sso), which eliminates heap memory allocation for string capacity less than 24 bytes. `sizeof(cstr)` is also 24. In comparison, c++ `sizeof(std::string)` is typically 32, but sso capacity is only 15 bytes.
+**cstr** uses short strings optimization (sso), which eliminates heap memory allocation
+for string capacity up to 22 bytes. `sizeof(cstr)` is 24. In comparison, C++ 
+`sizeof(std::string)` is typically 32, but sso capacity is only 15 bytes.
 
 ## Header file
 
@@ -18,11 +24,12 @@ All cstr definitions and prototypes are available by including a single header f
 
 ## Methods
 ```c
-cstr        cstr_init(void);                                        // constructor; same as cstr_NULL.
+cstr        cstr_init(void);                                        // constructor; empty string
 cstr        cstr_lit(const char literal_only[]);                    // cstr from literal; no strlen() call.
 cstr        cstr_from(const char* str);                             // constructor using strlen()
 cstr        cstr_from_n(const char* str, intptr_t n);               // constructor with n first bytes of str
 cstr        cstr_from_sv(csview sv);                                // construct cstr from csview
+cstr        cstr_from_rs(crawstr rs);                               // construct cstr from crawstr
 cstr        cstr_with_capacity(intptr_t cap);
 cstr        cstr_with_size(intptr_t len, char fill);                // repeat fill len times
 cstr        cstr_from_fmt(const char* fmt, ...);                    // printf() formatting
@@ -32,10 +39,11 @@ cstr*       cstr_take(cstr* self, cstr s);                          // take owne
 cstr        cstr_move(cstr* self);                                  // move string to caller, leave self empty
 void        cstr_drop(cstr* self);                                  // destructor
 
-const char* cstr_str(const cstr* self);                             // cast to const char*
-char*       cstr_data(cstr* self);                                  // cast to mutable char*
-csview      cstr_sv(const cstr* self);                              // cast to string view
-cstr_buf    cstr_buffer(cstr* self);                                // cast to mutable buffer (with capacity)
+const char* cstr_str(const cstr* self);                             // to const char*
+csview      cstr_sv(const cstr* self);                              // to csview
+crawstr     cstr_rs(const cstr* self);                              // to crawstr
+char*       cstr_data(cstr* self);                                  // to mutable char*
+cstr_buf    cstr_buffer(cstr* self);                                // to mutable buffer (with capacity)
 
 intptr_t    cstr_size(const cstr* self);
 intptr_t    cstr_capacity(const cstr* self);
@@ -132,11 +140,11 @@ Note that all methods with arguments `(..., const char* str, intptr_t n)`, `n` m
 
 #### Helper methods:
 ```c
-int          cstr_cmp(const cstr* s1, const cstr* s2);
-bool         cstr_eq(const cstr* s1, const cstr* s2);
-bool         cstr_hash(const cstr* self);
+int         cstr_cmp(const cstr* s1, const cstr* s2);
+bool        cstr_eq(const cstr* s1, const cstr* s2);
+uint64_t    cstr_hash(const cstr* self);
 
-char*        cstrnstrn(const char* str, const char* search, intptr_t slen, intptr_t nlen);
+char*       stc_strnstrn(const char* str, intptr_t slen, const char* needle, intptr_t nlen);
 ```
 
 ## Types
@@ -145,7 +153,7 @@ char*        cstrnstrn(const char* str, const char* search, intptr_t slen, intpt
 |:----------------|:---------------------------------------------|:---------------------|
 | `cstr`          | `struct { ... }`                             | The string type      |
 | `cstr_value`    | `char`                                       | String element type  |
-| `csview`        | `struct { const char *str; intptr_t size; }` | String view type     |
+| `cstr_iter`     | `union { cstr_value *ref; csview chr; }`     | String iterator      |
 | `cstr_buf`      | `struct { char *data; intptr_t size, cap; }` | String buffer type   |
 
 ## Constants and macros
@@ -153,13 +161,13 @@ char*        cstrnstrn(const char* str, const char* search, intptr_t slen, intpt
 | Name              | Value             |
 |:------------------|:------------------|
 |  `c_NPOS`         | `INTPTR_MAX`      |
-|  `cstr_NULL`      | cstr null value   |
 
 ## Example
 ```c
+#define i_implement
 #include <stc/cstr.h>
 
-int main() {
+int main(void) {
     cstr s0, s1, full_path;
     c_defer(
         cstr_drop(&s0),

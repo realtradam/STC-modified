@@ -7,19 +7,19 @@ A **cset** is an associative container that contains a set of unique objects of 
 ## Header file and declaration
 
 ```c
-#define i_type      // container type name (default: cset_{i_key})
-#define i_key       // hash key: REQUIRED.
-#define i_hash      // hash func: REQUIRED IF i_keyraw is a non-pod type.
-#define i_eq        // equality comparison two i_keyraw*: !i_cmp is used if not defined.
-#define i_keydrop   // destroy key func - defaults to empty destruct
-#define i_keyclone  // REQUIRED IF i_keydrop defined
+#define i_key <t>      // element type: REQUIRED. Note: i_val* may be specified instead of i_key*.
+#define i_type <t>     // container type name
+#define i_hash <f>     // hash func i_keyraw*: REQUIRED IF i_keyraw is non-pod type
+#define i_eq <f>       // equality comparison two i_keyraw*: REQUIRED IF i_keyraw is a
+                       // non-integral type. Three-way i_cmp may alternatively be specified.
+#define i_keydrop <f>  // destroy key func: defaults to empty destruct
+#define i_keyclone <f> // clone func: REQUIRED IF i_keydrop defined
 
-#define i_keyraw    // convertion "raw" type - defaults to i_key
-#define i_keyfrom   // convertion func i_keyraw => i_key - defaults to plain copy
-#define i_keyto     // convertion func i_key* => i_keyraw - defaults to plain copy
+#define i_keyraw <t>   // convertion "raw" type - defaults to i_key
+#define i_keyfrom <f>  // convertion func i_keyraw => i_key - defaults to plain copy
+#define i_keyto <f>    // convertion func i_key* => i_keyraw - defaults to plain copy
 
-#define i_tag       // alternative typename: cmap_{i_tag}. i_tag defaults to i_val
-#define i_ssize      // default int32_t. If defined, table expand 2x (else 1.5x)
+#define i_tag <s>      // alternative typename: cmap_{i_tag}. i_tag defaults to i_key
 #include <stc/cset.h>
 ```
 `X` should be replaced by the value of `i_tag` in all of the following documentation.
@@ -77,16 +77,17 @@ cset_X_value        cset_X_value_clone(cset_X_value val);
 
 ## Example
 ```c
+#define i_implement
 #include <stc/cstr.h>
 #define i_type Strset
 #define i_key_str
 #include <stc/cset.h>
 
-int main ()
+int main(void)
 {
     Strset first, second={0}, third={0}, fourth={0}, fifth;
 
-    first = c_make(Strset, {"red", "green", "blue"});
+    first = c_init(Strset, {"red", "green", "blue"});
     fifth = Strset_clone(second);
 
     c_forlist (i, const char*, {"orange", "pink", "yellow"})

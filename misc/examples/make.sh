@@ -1,20 +1,19 @@
 #!/bin/sh
 
 if [ "$(uname)" = 'Linux' ]; then
-    sanitize='-fsanitize=address'
+    sanitize='-fsanitize=address -fsanitize=undefined -fsanitize-trap'
     clibs='-lm' # -pthread
     oflag='-o '
 fi
 
-cc=gcc; cflags="-s -O3 -std=c99 -Wconversion -Wpedantic -Wall -Wsign-compare -Wwrite-strings"
-#cc=gcc; cflags="-g -std=c99 -Werror -Wfatal-errors -Wpedantic -Wall $sanitize"
-#cc=tcc; cflags="-Wall -std=c99"
-#cc=clang; cflags="-s -O2 -std=c99 -Werror -Wfatal-errors -Wpedantic -Wall -Wno-unused-function -Wsign-compare -Wwrite-strings"
-#cc=gcc; cflags="-x c++ -s -O2 -Wall -std=c++20"
-#cc=g++; cflags="-x c++ -s -O2 -Wall"
-#cc=cl; cflags="-O2 -nologo -W3 -MD"
-#cc=cl; cflags="-nologo -TP"
-#cc=cl; cflags="-nologo -std:c11"
+cc=gcc; cflags="-std=c99 -s -O3 -Wall -Wextra -Wpedantic -Wconversion -Wwrite-strings -Wdouble-promotion -Wno-unused-parameter -Wno-maybe-uninitialized -Wno-implicit-fallthrough -Wno-missing-field-initializers"
+#cc=gcc; cflags="-std=c99 -g -Werror -Wfatal-errors -Wpedantic -Wall $sanitize"
+#cc=tcc; cflags="-std=c99 -Wall"
+#cc=clang; cflags="-std=c99 -s -O3 -Wall -Wextra -Wpedantic -Wconversion -Wwrite-strings -Wdouble-promotion -Wno-unused-parameter -Wno-unused-function -Wno-implicit-fallthrough -Wno-missing-field-initializers"
+#cc=gcc; cflags="-x c++ -std=c++20 -O2 -s -Wall"
+#cc=cl; cflags="-nologo -O2 -MD -W3 -wd4003"
+#cc=cl; cflags="-nologo -TP -std:c++20 -wd4003"
+#cc=cl; cflags="-nologo -std:c11 -wd4003"
 
 if [ "$cc" = "cl" ]; then
     oflag='/Fe:'
@@ -38,18 +37,20 @@ else
 fi
 
 if [ $run = 0 ] ; then
-    for i in *.c ; do
-        echo $comp -I../../include $i $clibs $oflag$(basename $i .c).exe
-        $comp -I../../include $i $clibs $oflag$(basename $i .c).exe
+    for i in */*.c ; do
+        out=$(basename $i .c).exe
+        #out=$(dirname $i)/$(basename $i .c).exe
+        echo $comp -I../../include $i $clibs $oflag$out
+        $comp -I../../include $i $clibs $oflag$out
     done
 else
-    for i in *.c ; do
+    for i in */*.c ; do
         echo $comp -I../../include $i $clibs
         $comp -I../../include $i $clibs
-        if [ -f $(basename -s .c $i).exe ]; then ./$(basename -s .c $i).exe; fi
-        if [ -f ./a.exe ]; then ./a.exe; fi
-        if [ -f ./a.out ]; then ./a.out; fi
+        out=$(basename $i .c).exe
+        #out=$(dirname $i)/$(basename $i .c).exe
+        if [ -f $out ]; then ./$out; fi
     done
 fi
 
-rm -f a.out *.o *.obj # *.exe
+#rm -f a.out *.o *.obj # *.exe

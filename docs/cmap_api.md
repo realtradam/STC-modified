@@ -9,34 +9,33 @@ hashing (aka open addressing) with linear probing, and without leaving tombstone
 
 ***Iterator invalidation***: References and iterators are invalidated after erase. No iterators are invalidated after insert,
 unless the hash-table need to be extended. The hash table size can be reserved prior to inserts if the total max size is known.
-The order of elements is preserved after erase and insert. This makes it possible to erase individual elements while iterating
-through the container by using the returned iterator from *erase_at()*, which references the next element.
+The order of elements may not be preserved after erase. It is still possible to erase elements when iterating through
+the container by setting the iterator to the value returned from *erase_at()*, which references the next element. Note that a small number of elements may be visited twice when doing this, but all elements will be visited.
 
 See the c++ class [std::unordered_map](https://en.cppreference.com/w/cpp/container/unordered_map) for a functional description.
 
 ## Header file and declaration
 
 ```c
-#define i_type      // container type name (default: cmap_{i_key})
-#define i_key       // hash key: REQUIRED
-#define i_val       // map value: REQUIRED
-#define i_hash      // hash func i_keyraw*: REQUIRED IF i_keyraw is non-pod type
-#define i_eq        // equality comparison two i_keyraw*: REQUIRED IF i_keyraw is a
-                    // non-integral type. Three-way i_cmp may alternatively be specified.
-#define i_keydrop   // destroy key func - defaults to empty destruct
-#define i_keyclone  // REQUIRED IF i_keydrop defined
-#define i_keyraw    // convertion "raw" type - defaults to i_key
-#define i_keyfrom   // convertion func i_keyraw => i_key
-#define i_keyto     // convertion func i_key* => i_keyraw
+#define i_key <t>      // key type: REQUIRED.
+#define i_val <t>      // mapped value type: REQUIRED.
+#define i_type <t>     // container type name (default: cmap_{i_key})
+#define i_hash <f>     // hash func i_keyraw*: REQUIRED IF i_keyraw is non-pod type
+#define i_eq <f>       // equality comparison two i_keyraw*: REQUIRED IF i_keyraw is a
+                       // non-integral type. Three-way i_cmp may alternatively be specified.
+#define i_keydrop <f>  // destroy key func - defaults to empty destruct
+#define i_keyclone <f> // REQUIRED IF i_keydrop defined
+#define i_keyraw <t>   // convertion "raw" type - defaults to i_key
+#define i_keyfrom <f>  // convertion func i_keyraw => i_key
+#define i_keyto <f>    // convertion func i_key* => i_keyraw
 
-#define i_valdrop   // destroy value func - defaults to empty destruct
-#define i_valclone  // REQUIRED IF i_valdrop defined
-#define i_valraw    // convertion "raw" type - defaults to i_val
-#define i_valfrom   // convertion func i_valraw => i_val
-#define i_valto     // convertion func i_val* => i_valraw
+#define i_valdrop <f>  // destroy value func - defaults to empty destruct
+#define i_valclone <f> // REQUIRED IF i_valdrop defined
+#define i_valraw <t>   // convertion "raw" type - defaults to i_val
+#define i_valfrom <f>  // convertion func i_valraw => i_val
+#define i_valto <f>    // convertion func i_val* => i_valraw
 
-#define i_tag       // alternative typename: cmap_{i_tag}. i_tag defaults to i_val
-#define i_ssize     // internal; default int32_t. If defined, table expand 2x (else 1.5x)
+#define i_tag <s>      // alternative typename: cmap_{i_tag}. i_tag defaults to i_val
 #include <stc/cmap.h>
 ```
 `X` should be replaced by the value of `i_tag` in all of the following documentation.
@@ -72,7 +71,8 @@ cmap_X_result         cmap_X_insert_or_assign(cmap_X* self, i_key key, i_val map
 cmap_X_result         cmap_X_push(cmap_X* self, cmap_X_value entry);                    // similar to insert
 
 cmap_X_result         cmap_X_emplace(cmap_X* self, i_keyraw rkey, i_valraw rmapped);    // no change if rkey in map
-cmap_X_result         cmap_X_emplace_or_assign(cmap_X* self, i_keyraw rkey, i_valraw rmapped); // always update
+cmap_X_result         cmap_X_emplace_or_assign(cmap_X* self, i_keyraw rkey, i_valraw rmapped); // always update mapped
+cmap_X_result         cmap_X_emplace_key(cmap_X* self, i_keyraw rkey);                  // see example 1.
 
 int                   cmap_X_erase(cmap_X* self, i_keyraw rkey);                        // return 0 or 1
 cmap_X_iter           cmap_X_erase_at(cmap_X* self, cmap_X_iter it);                    // return iter after it
@@ -86,13 +86,14 @@ cmap_X_iter           cmap_X_advance(cmap_X_iter it, cmap_X_ssize n);
 cmap_X_value          cmap_X_value_clone(cmap_X_value val);
 cmap_X_raw            cmap_X_value_toraw(cmap_X_value* pval);
 ```
-Helpers:
+Free helper functions:
 ```c
-uint64_t              c_default_hash(const X *obj);                         // macro, calls cfasthash(obj, sizeof *obj)
-uint64_t              cstrhash(const char *str);                            // string hash funcion, uses strlen()
-uint64_t              cfasthash(const void *data, intptr_t len);            // base hash function
+uint64_t              stc_hash(const void *data, intptr_t len);             // base hash function
+uint64_t              stc_strhash(const char *str);                         // string hash funcion, uses strlen()
+uint64_t              stc_nextpow2(intptr_t i);                             // get next power of 2 >= i
 
-// equalto template parameter functions:
+// hash/equal template default functions:
+uint64_t              c_default_hash(const X *obj);                         // macro, calls stc_hash(obj, sizeof *obj)
 bool                  c_default_eq(const i_keyraw* a, const i_keyraw* b);   // *a == *b
 bool                  c_memcmp_eq(const i_keyraw* a, const i_keyraw* b);    // !memcmp(a, b, sizeof *a)
 ```
@@ -114,16 +115,17 @@ bool                  c_memcmp_eq(const i_keyraw* a, const i_keyraw* b);    // !
 ## Examples
 
 ```c
+#define i_implement
 #include <stc/cstr.h>
 
 #define i_key_str
 #define i_val_str
 #include <stc/cmap.h>
 
-int main()
+int main(void)
 {
     // Create an unordered_map of three strings (that map to strings)
-    cmap_str umap = c_make(cmap_str, {
+    cmap_str umap = c_init(cmap_str, {
         {"RED", "#FF0000"},
         {"GREEN", "#00FF00"},
         {"BLUE", "#0000FF"}
@@ -137,6 +139,11 @@ int main()
     // Add two new entries to the unordered map
     cmap_str_emplace(&umap, "BLACK", "#000000");
     cmap_str_emplace(&umap, "WHITE", "#FFFFFF");
+
+    // Insert only if "CYAN" is not in the map: create mapped value when needed only.
+    cmap_str_result res = cmap_str_emplace_key(&umap, "CYAN");
+    if (res.inserted)
+        res.ref->second = cstr_from("#00FFFF"); // must assign second if key was inserted.
 
     // Output values by key
     printf("The HEX of color RED is:[%s]\n", cstr_str(cmap_str_at(&umap, "RED")));
@@ -157,13 +164,14 @@ The HEX of color BLACK is:[#000000]
 ### Example 2
 This example uses a cmap with cstr as mapped value.
 ```c
+#define i_implement
 #include <stc/cstr.h>
 #define i_type IDMap
 #define i_key int
 #define i_val_str
 #include <stc/cmap.h>
 
-int main()
+int main(void)
 {
     uint32_t col = 0xcc7744ff;
 
@@ -206,7 +214,7 @@ typedef struct { int x, y, z; } Vec3i;
 #define i_tag vi
 #include <stc/cmap.h>
 
-int main()
+int main(void)
 {
     // Define map with defered destruct
     cmap_vi vecs = {0};
@@ -241,7 +249,7 @@ typedef struct { int x, y, z; } Vec3i;
 #define i_tag iv
 #include <stc/cmap.h>
 
-int main()
+int main(void)
 {
     cmap_iv vecs = {0}
 
@@ -267,6 +275,7 @@ Output:
 ### Example 5: Advanced
 Key type is struct.
 ```c
+#define i_implement
 #include <stc/cstr.h>
 
 typedef struct {
@@ -274,7 +283,7 @@ typedef struct {
     cstr country;
 } Viking;
 
-#define Viking_init() ((Viking){cstr_NULL, cstr_NULL})
+#define Viking_init() ((Viking){.name={0}, .country={0}})
 
 static inline int Viking_cmp(const Viking* a, const Viking* b) {
     int c = cstr_cmp(&a->name, &b->name);
@@ -301,7 +310,7 @@ static inline void Viking_drop(Viking* vk) {
 #define i_val int
 #include <stc/cmap.h>
 
-int main()
+int main(void)
 {
     // Use a HashMap to store the vikings' health points.
     Vikings vikings = {0};
@@ -335,6 +344,7 @@ In example 5 we needed to construct a lookup key which allocated strings, and th
 In this example we use rawtype feature to make it even simpler to use. Note that we must use the emplace() methods
 to add "raw" type entries (otherwise compile error):
 ```c
+#define i_implement
 #include <stc/cstr.h>
 
 typedef struct Viking {
@@ -372,11 +382,11 @@ static inline RViking Viking_toraw(const Viking* vp) {
 #define i_keyraw    RViking
 #define i_keyfrom   Viking_from
 #define i_opt       c_no_clone // disable map cloning
-#define i_hash(rp)  (cstrhash(rp->name) ^ cstrhash(rp->country))
+#define i_hash(rp)  (stc_strhash(rp->name) ^ stc_strhash(rp->country))
 #define i_val       int
 #include <stc/cmap.h>
 
-int main()
+int main(void)
 {
     Vikings vikings = {0};
 

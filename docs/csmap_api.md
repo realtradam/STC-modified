@@ -15,25 +15,24 @@ See the c++ class [std::map](https://en.cppreference.com/w/cpp/container/map) fo
 ## Header file and declaration
 
 ```c
-#define i_type      // container type name (default: cmap_{i_key})
-#define i_key       // key: REQUIRED
-#define i_val       // value: REQUIRED
-#define i_cmp       // three-way compare two i_keyraw* : REQUIRED IF i_keyraw is a non-integral type
+#define i_key <t>      // key type: REQUIRED.
+#define i_val <t>      // mapped value type: REQUIRED.
+#define i_type <t>     // container type name (default: cmap_{i_key})
+#define i_cmp <f>      // three-way compare two i_keyraw* : REQUIRED IF i_keyraw is a non-integral type
 
-#define i_keydrop   // destroy key func - defaults to empty destruct
-#define i_keyclone  // REQUIRED IF i_valdrop defined
-#define i_keyraw    // convertion "raw" type - defaults to i_key
-#define i_keyfrom   // convertion func i_keyraw => i_key
-#define i_keyto     // convertion func i_key* => i_keyraw
+#define i_keydrop <f>  // destroy key func - defaults to empty destruct
+#define i_keyclone <f> // REQUIRED IF i_valdrop defined
+#define i_keyraw <t>   // convertion "raw" type - defaults to i_key
+#define i_keyfrom <f>  // convertion func i_keyraw => i_key
+#define i_keyto <f>    // convertion func i_key* => i_keyraw
 
-#define i_valdrop   // destroy value func - defaults to empty destruct
-#define i_valclone  // REQUIRED IF i_valdrop defined
-#define i_valraw    // convertion "raw" type - defaults to i_val
-#define i_valfrom   // convertion func i_valraw => i_val
-#define i_valto     // convertion func i_val* => i_valraw
+#define i_valdrop <f>  // destroy value func - defaults to empty destruct
+#define i_valclone <f> // REQUIRED IF i_valdrop defined
+#define i_valraw <t>   // convertion "raw" type - defaults to i_val
+#define i_valfrom <f>  // convertion func i_valraw => i_val
+#define i_valto <f>    // convertion func i_val* => i_valraw
 
-#define i_tag       // alternative typename: csmap_{i_tag}. i_tag defaults to i_val
-#define i_ssize     // internal size rep. defaults to int32_t
+#define i_tag <s>      // alternative typename: csmap_{i_tag}. i_tag defaults to i_val
 #include <stc/csmap.h>
 ```
 `X` should be replaced by the value of `i_tag` in all of the following documentation.
@@ -73,6 +72,7 @@ csmap_X_result        csmap_X_push(csmap_X* self, csmap_X_value entry);         
 
 csmap_X_result        csmap_X_emplace(csmap_X* self, i_keyraw rkey, i_valraw rmapped);           // no change if rkey in map
 csmap_X_result        csmap_X_emplace_or_assign(csmap_X* self, i_keyraw rkey, i_valraw rmapped); // always update rmapped
+csmap_X_result        csmap_X_emplace_key(csmap_X* self, i_keyraw rkey);    // if key not in map, mapped is left unassigned
 
 int                   csmap_X_erase(csmap_X* self, i_keyraw rkey);
 csmap_X_iter          csmap_X_erase_at(csmap_X* self, csmap_X_iter it);                          // returns iter after it
@@ -84,7 +84,8 @@ void                  csmap_X_next(csmap_X_iter* iter);
 csmap_X_iter          csmap_X_advance(csmap_X_iter it, intptr_t n);
 
 csmap_X_value         csmap_X_value_clone(csmap_X_value val);
-csmap_X_raw           csmap_X_value_toraw(csmap_X_value* pval);
+csmap_X_raw           csmap_X_value_toraw(const csmap_X_value* pval);
+void                  csmap_X_value_drop(csmap_X_value* pval);
 ```
 ## Types
 
@@ -102,16 +103,16 @@ csmap_X_raw           csmap_X_value_toraw(csmap_X_value* pval);
 
 ## Examples
 ```c
+#define i_implement
 #include <stc/cstr.h>
-
 #define i_key_str // special macro for i_key = cstr, i_tag = str
 #define i_val_str // ditto
 #include <stc/csmap.h>
 
-int main()
+int main(void)
 {
     // Create a sorted map of three strings (maps to string)
-    csmap_str colors = c_make(csmap_str, {
+    csmap_str colors = c_init(csmap_str, {
         {"RED", "#FF0000"},
         {"GREEN", "#00FF00"},
         {"BLUE", "#0000FF"}
@@ -148,8 +149,9 @@ Translate a
 [C++ example using *insert* and *emplace*](https://en.cppreference.com/w/cpp/container/map/try_emplace)
  to STC:
 
-[ [Run this code](https://godbolt.org/z/9d1PP77Pa) ]
+[ [Run this code](https://godbolt.org/z/b46W5Ezrb) ]
 ```c
+#define i_implement
 #include <stc/cstr.h>
 #define i_type strmap
 #define i_key_str
@@ -165,7 +167,7 @@ static void print_result(strmap_result result) {
     print_node(result.ref);
 }
  
-int main()
+int main(void)
 {
     strmap m = {0};
  
@@ -182,6 +184,7 @@ int main()
 ### Example 3
 This example uses a csmap with cstr as mapped value.
 ```c
+#define i_implement
 #include <stc/cstr.h>
 
 #define i_type IDSMap
@@ -189,10 +192,10 @@ This example uses a csmap with cstr as mapped value.
 #define i_val_str
 #include <stc/csmap.h>
 
-int main()
+int main(void)
 {
     uint32_t col = 0xcc7744ff;
-    IDSMap idnames = c_make(IDSMap, { {100, "Red"}, {110, "Blue"} });
+    IDSMap idnames = c_init(IDSMap, { {100, "Red"}, {110, "Blue"} });
 
     // Assign/overwrite an existing mapped value with a const char*
     IDSMap_emplace_or_assign(&idnames, 110, "White");
@@ -235,7 +238,7 @@ static int Vec3i_cmp(const Vec3i* a, const Vec3i* b) {
 #include <stc/csmap.h>
 #include <stdio.h>
 
-int main()
+int main(void)
 {
     csmap_vi vmap = {0};
 

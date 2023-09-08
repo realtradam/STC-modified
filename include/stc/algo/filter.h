@@ -24,11 +24,11 @@
 #include <stdio.h>
 #define i_val int
 #include <stc/cstack.h>
-#include <stc/calgo.h>
+#include <stc/algorithm.h>
 
-int main()
+int main(void)
 {
-    cstack_int stk = c_make(cstack_int, {1, 2, 3, 4, 5, 6, 7, 8, 9});
+    cstack_int stk = c_init(cstack_int, {1, 2, 3, 4, 5, 6, 7, 8, 9});
 
     c_foreach (i, cstack_int, stk)
         printf(" %d", *i.ref);
@@ -47,7 +47,7 @@ int main()
 #ifndef STC_FILTER_H_INCLUDED
 #define STC_FILTER_H_INCLUDED
 
-#include <stc/ccommon.h>
+#include "../ccommon.h"
 
 // c_forfilter:
 
@@ -85,29 +85,42 @@ int main()
     if (it.ref == _endref) it.ref = NULL; \
 } while (0)
 
+#define c_all_of(boolptr, it, C, cnt, pred) do { \
+    C##_iter it; \
+    c_find_if_4(it, C, cnt, !(pred)); \
+    *(boolptr) = it.ref == NULL; \
+} while (0)
+#define c_any_of(boolptr, it, C, cnt, pred) do { \
+    C##_iter it; \
+    c_find_if_4(it, C, cnt, pred); \
+    *(boolptr) = it.ref != NULL; \
+} while (0)
+#define c_none_of(boolptr, it, C, cnt, pred) do { \
+    C##_iter it; \
+    c_find_if_4(it, C, cnt, pred); \
+    *(boolptr) = it.ref == NULL; \
+} while (0)
 
 // Use with: clist, cmap, cset, csmap, csset:
 #define c_erase_if(it, C, cnt, pred) do { \
     C* _cnt = &cnt; \
-    intptr_t _index = 0; \
-    for (C##_iter it = C##_begin(_cnt); it.ref; ++_index) { \
+    for (C##_iter it = C##_begin(_cnt); it.ref; ) { \
         if (pred) it = C##_erase_at(_cnt, it); \
         else C##_next(&it); \
     } \
 } while (0)
 
-
 // Use with: cstack, cvec, cdeq, cqueue:
 #define c_eraseremove_if(it, C, cnt, pred) do { \
     C* _cnt = &cnt; \
-    intptr_t _n = 0, _index = 0; \
+    intptr_t _n = 0; \
     C##_iter it = C##_begin(_cnt), _i; \
     while (it.ref && !(pred)) \
-        C##_next(&it), ++_index; \
-    for (_i = it; it.ref; C##_next(&it), ++_index) \
+        C##_next(&it); \
+    for (_i = it; it.ref; C##_next(&it)) \
         if (pred) C##_value_drop(it.ref), ++_n; \
         else *_i.ref = *it.ref, C##_next(&_i); \
-    _cnt->_len -= _n; \
+    C##_adjust_end_(_cnt, -_n); \
 } while (0)
 
 // ------------------------ private -------------------------

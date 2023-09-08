@@ -1,35 +1,30 @@
 # STC [crand](../include/stc/crand.h): Pseudo Random Number Generator
 ![Random](pics/random.jpg)
 
-This features a *64-bit PRNG* named **stc64**, and can generate bounded uniform and normal
+This features a *64-bit PRNG* named **crand64**, and can generate bounded uniform and normal
 distributed random numbers.
 
 See [random](https://en.cppreference.com/w/cpp/header/random) for similar c++ functionality.
 
 ## Description
 
-**stc64** is a novel, extremely fast PRNG by Tyge Løvset, suited for parallel usage. It features
-Weyl-sequences as part of its state. It is inspired on *sfc64*, but has a different output function
-and state size.
+**crand64** is a very fast PRNG, suited for parallel usage. It is based on *sfc64*, but has a
+different output function and state size. It features a Weyl-sequence as part of its state. 
 
-**sfc64** is the fastest among *pcg*, *xoshiro`**`*, and *lehmer*. It is equally fast as *sfc64* on
-most platforms. *wyrand* is faster on platforms with fast 128-bit multiplication, and has 2^64 period
-length (https://github.com/lemire/SwiftWyhash/issues/10). However, *wyrand* is not suited for massive
-parallel usage due to its limited total minimal period length.
+**crand64** is faster or equally fast as *wyrand*, *xoshiro\*\**, *sfc64*, and *romu_trio*
+with both **clang 16.0** and **gcc 13.1** from the [prng_bench.c](../misc/benchmarks/various/prng_bench.cpp)
+on windows 11, Ryzen 7 5700X. (clang does not optimize *xoshiro\*\** and *sfc64* as well as gcc does).
 
-**stc64** does not require multiplication or 128-bit integer operations. It has 320 bit state,
-but updates only 256 bit per generated number.
+**crand64** has no jump *function*, but each odd number Weyl-increment (state[4]) starts a new
+unique 2^64 *minimum* length period, i.e. virtually unlimitied number of unique threads.
+In contrast, *wyrand* and *sfc64* have only a (total) minimum period of 2^64 (*romu_trio* has
+no guarantees), and may therefore not be suited for massive parallel usage (for purists).
 
-There is no *jump function*, but each odd number Weyl-increment (state[4]) starts a new
-unique 2^64 *minimum* length period. For a single thread, a minimum period of 2^127 is generated
-when the Weyl-increment is incremented by 2 every 2^64 output.
+**crand64** does not require multiplication or 128-bit integer operations. It has 320 bit state,
+where 64-bits are constant per instance.
 
-**stc64** passes *PractRand* (tested up to 8TB output), Vigna's Hamming weight test, and simple
-correlation tests, i.e. *n* interleaved streams with only one-bit differences in initial state.
-Also 32-bit and 16-bit versions passes PractRand up to their size limits.
-
-For more, see the PRNG shootout by Vigna: http://prng.di.unimi.it and a debate between the authors of
-xoshiro and pcg (Vigna/O'Neill) PRNGs: https://www.pcg-random.org/posts/on-vignas-pcg-critique.html
+**crand64** passes *PractRand* (tested up to 8TB output), Vigna's Hamming weight test, and simple
+correlation tests. The 16- and 32-bit variants also passes PractRand up to their size limits.
 
 ## Header file
 
@@ -41,32 +36,33 @@ All crand definitions and prototypes are available by including a single header 
 ## Methods
 
 ```c
-void                csrand(uint64_t seed);                                // seed global stc64 prng
+void                csrand(uint64_t seed);                                // seed global crand64 prng
 uint64_t            crand(void);                                          // global crand_u64(rng)
 double              crandf(void);                                         // global crand_f64(rng)
 
-crand_t             crand_init(uint64_t seed);                            // stc64_init(s) is deprecated
+crand_t             crand_init(uint64_t seed);
 uint64_t            crand_u64(crand_t* rng);                              // range [0, 2^64 - 1]
 double              crand_f64(crand_t* rng);                              // range [0.0, 1.0)
 
-crand_unif_t        crand_unif_init(int64_t low, int64_t high);           // uniform-distribution
-int64_t             crand_unif(crand_t* rng, crand_unif_t* dist);         // range [low, high]
+crand_uniform_t     crand_uniform_init(int64_t low, int64_t high);        // uniform-distribution range
+int64_t             crand_uniform(crand_t* rng, crand_uniform_t* dist);
 
-crand_norm_t        crand_norm_init(double mean, double stddev);          // normal-distribution
-double              crand_norm(crand_t* rng, crand_norm_t* dist);
+crand_normal_t      crand_normal_init(double mean, double stddev);        // normal-gauss distribution
+double              crand_normal(crand_t* rng, crand_normal_t* dist);
 ```
 ## Types
 
 | Name               | Type definition                           | Used to represent...         |
 |:-------------------|:------------------------------------------|:-----------------------------|
 | `crand_t`          | `struct {uint64_t state[4];}`             | The PRNG engine type         |
-| `crand_unif_t`     | `struct {int64_t lower; uint64_t range;}` | Integer uniform distribution |
-| `crand_norm_t`     | `struct {double mean, stddev;}`           | Normal distribution type     |
+| `crand_uniform_t`  | `struct {int64_t lower; uint64_t range;}` | Integer uniform distribution |
+| `crand_normal_t`   | `struct {double mean, stddev;}`           | Normal distribution type     |
 
 ## Example
 ```c
 #include <time.h>
 #include <stc/crand.h>
+#define i_implement
 #include <stc/cstr.h>
 
 // Declare int -> int sorted map. Uses typetag 'i' for ints.
@@ -75,7 +71,7 @@ double              crand_norm(crand_t* rng, crand_norm_t* dist);
 #define i_tag i
 #include <stc/csmap.h>
 
-int main()
+int main(void)
 {
     enum {N = 10000000};
     const double Mean = -12.0, StdDev = 6.0, Scale = 74;
@@ -85,17 +81,17 @@ int main()
     // Setup random engine with normal distribution.
     uint64_t seed = time(NULL);
     crand_t rng = crand_init(seed);
-    crand_norm_t dist = crand_norm_init(Mean, StdDev);
+    crand_normal_t dist = crand_normal_init(Mean, StdDev);
 
     // Create histogram map
-    csmap_i mhist = csmap_i_init();
+    csmap_i mhist = {0};
     c_forrange (N) {
-        int index = (int)round(crand_norm(&rng, &dist));
+        int index = (int)round(crand_normal(&rng, &dist));
         csmap_i_emplace(&mhist, index, 0).ref->second += 1;
     }
 
     // Print the gaussian bar chart
-    cstr bar = cstr_init();
+    cstr bar = {0};
     c_foreach (i, csmap_i, mhist) {
         int n = (int)(i.ref->second * StdDev * Scale * 2.5 / N);
         if (n > 0) {
